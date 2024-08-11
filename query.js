@@ -1,10 +1,67 @@
-'use client'
+//api/chat/route.js
+import { NextResponse } from 'next/server'
+import OpenAI from 'openai'
+
+// Define constants for easy configuration
+const SYSTEM_PROMPT = 'You are an expert parent!'
+const MODEL_NAME = 'gpt-4' // Using GPT-4 model
+
+export async function POST (req) {
+  // Initialize the OpenAI client
+  const openai = new OpenAI()
+
+  // Parse the incoming request body
+  const userMessages = await req.json()
+
+  // Create a ReadableStream to handle the streaming response
+  const stream = new ReadableStream({
+    async start (controller) {
+      // Initialize a TextEncoder to convert strings to Uint8Array
+      const encoder = new TextEncoder()
+
+      try {
+        // Create a chat completion request to the OpenAI API
+        const completion = await openai.chat.completions.create({
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            ...userMessages
+          ],
+          model: MODEL_NAME,
+          stream: true // Enable streaming responses
+        })
+
+        // Iterate over the streamed chunks of the response
+        for await (const chunk of completion) {
+          const content = chunk.choices[0]?.delta?.content
+          if (content) {
+            // Encode and enqueue the content to the stream
+            const encodedContent = encoder.encode(content)
+            controller.enqueue(encodedContent)
+          }
+        }
+      } catch (error) {
+        // Log and handle any errors that occur during streaming
+        console.error('Error in OpenAI stream:', error)
+        controller.error(error)
+      } finally {
+        // Close the stream when done
+        controller.close()
+      }
+    }
+  })
+
+  // Return the stream as the response
+  return new NextResponse(stream)
+}
+
+//components/ChatInterface.js
+
+;('use client')
 
 import { Box, Button, Stack, TextField, Typography } from '@mui/material'
 import { useState, useRef, useEffect } from 'react'
-import { createSession, updateSession } from '../lib/firebaseOperations'
 
-export default function ChatInterface ({ onNewSession }) {
+export default function ChatInterface () {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -12,28 +69,20 @@ export default function ChatInterface ({ onNewSession }) {
         "Hi! I'm the Headstarter support assistant. How can I help you today?"
     }
   ])
+
   const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [sessionId, setSessionId] = useState(null)
 
   const sendMessage = async () => {
     if (!message.trim()) return
     setIsLoading(true)
 
-    const newMessages = [
+    setMessage('')
+    setMessages(messages => [
       ...messages,
       { role: 'user', content: message },
       { role: 'assistant', content: '' }
-    ]
-
-    setMessage('')
-    setMessages(newMessages)
-
-    if (!sessionId) {
-      const newSessionId = await createSession(message)
-      setSessionId(newSessionId)
-      onNewSession(newSessionId, message)
-    }
+    ])
 
     try {
       const response = await fetch('/api/chat', {
@@ -41,7 +90,7 @@ export default function ChatInterface ({ onNewSession }) {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(newMessages)
+        body: JSON.stringify([...messages, { role: 'user', content: message }])
       })
 
       if (!response.ok) {
@@ -55,22 +104,19 @@ export default function ChatInterface ({ onNewSession }) {
         const { done, value } = await reader.read()
         if (done) break
         const text = decoder.decode(value, { stream: true })
-        setMessages(prevMessages => {
-          const updatedMessages = [
-            ...prevMessages.slice(0, -1),
-            {
-              ...prevMessages[prevMessages.length - 1],
-              content: prevMessages[prevMessages.length - 1].content + text
-            }
+        setMessages(messages => {
+          let lastMessage = messages[messages.length - 1]
+          let otherMessages = messages.slice(0, messages.length - 1)
+          return [
+            ...otherMessages,
+            { ...lastMessage, content: lastMessage.content + text }
           ]
-          updateSession(sessionId, updatedMessages)
-          return updatedMessages
         })
       }
     } catch (error) {
       console.error('Error:', error)
-      setMessages(prevMessages => [
-        ...prevMessages,
+      setMessages(messages => [
+        ...messages,
         {
           role: 'assistant',
           content:
@@ -172,6 +218,75 @@ export default function ChatInterface ({ onNewSession }) {
           </Button>
         </Stack>
       </Stack>
+    </Box>
+  )
+}
+
+//components/Sidebar.js
+import { Box, Toolbar, Typography } from '@mui/material'
+
+export default function Sidebar () {
+  return (
+    <Box
+      position='static'
+      sx={{
+        bgcolor: 'black',
+        flexBasis: '20%',
+        flexShrink: '1',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center'
+      }}
+    >
+      <Toolbar>
+        <Typography
+          variant='h6'
+          component='div'
+          sx={{ flexGrow: 1, color: 'white' }}
+        >
+          Customer Support
+        </Typography>
+      </Toolbar>
+    </Box>
+  )
+}
+
+
+//lib/firebase.js
+import { initializeApp } from 'firebase/app'
+import { getFirestore } from 'firebase/firestore'
+import { getAnalytics } from 'firebase/analytics'
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {}
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig)
+// const analytics = getAnalytics(app)
+
+// Export db
+export const db = getFirestore(app)
+
+
+//page.js
+'use client'
+
+import { Box } from '@mui/material'
+import Sidebar from './/components/Sidebar'
+import ChatInterface from './/components/ChatInterface'
+
+export default function Home () {
+  return (
+    <Box
+      component='section'
+      display='flex'
+      sx={{ flexDirection: 'row', height: '100vh' }}
+    >
+      <Sidebar />
+      <ChatInterface />
     </Box>
   )
 }
