@@ -56,12 +56,13 @@ export async function POST (req) {
 
 //components/ChatInterface.js
 
-;('use client')
+'use client'
 
 import { Box, Button, Stack, TextField, Typography } from '@mui/material'
 import { useState, useRef, useEffect } from 'react'
+import { createSession, updateSession } from '../lib/firebaseOperations'
 
-export default function ChatInterface () {
+export default function ChatInterface ({ onNewSession }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -69,20 +70,28 @@ export default function ChatInterface () {
         "Hi! I'm the Headstarter support assistant. How can I help you today?"
     }
   ])
-
   const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [sessionId, setSessionId] = useState(null)
 
   const sendMessage = async () => {
     if (!message.trim()) return
     setIsLoading(true)
 
-    setMessage('')
-    setMessages(messages => [
+    const newMessages = [
       ...messages,
       { role: 'user', content: message },
       { role: 'assistant', content: '' }
-    ])
+    ]
+
+    setMessage('')
+    setMessages(newMessages)
+
+    if (!sessionId) {
+      const newSessionId = await createSession(message)
+      setSessionId(newSessionId)
+      onNewSession(newSessionId, message)
+    }
 
     try {
       const response = await fetch('/api/chat', {
@@ -90,7 +99,7 @@ export default function ChatInterface () {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify([...messages, { role: 'user', content: message }])
+        body: JSON.stringify(newMessages)
       })
 
       if (!response.ok) {
@@ -104,19 +113,22 @@ export default function ChatInterface () {
         const { done, value } = await reader.read()
         if (done) break
         const text = decoder.decode(value, { stream: true })
-        setMessages(messages => {
-          let lastMessage = messages[messages.length - 1]
-          let otherMessages = messages.slice(0, messages.length - 1)
-          return [
-            ...otherMessages,
-            { ...lastMessage, content: lastMessage.content + text }
+        setMessages(prevMessages => {
+          const updatedMessages = [
+            ...prevMessages.slice(0, -1),
+            {
+              ...prevMessages[prevMessages.length - 1],
+              content: prevMessages[prevMessages.length - 1].content + text
+            }
           ]
+          updateSession(sessionId, updatedMessages)
+          return updatedMessages
         })
       }
     } catch (error) {
       console.error('Error:', error)
-      setMessages(messages => [
-        ...messages,
+      setMessages(prevMessages => [
+        ...prevMessages,
         {
           role: 'assistant',
           content:
@@ -222,10 +234,34 @@ export default function ChatInterface () {
   )
 }
 
+
 //components/Sidebar.js
-import { Box, Toolbar, Typography } from '@mui/material'
+import {
+  Box,
+  Toolbar,
+  Typography,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemButton,
+  ListItemIcon
+} from '@mui/material'
+import SendIcon from '@mui/icons-material/Send'
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
+
+import { useState, useEffect } from 'react'
+import { getSessions } from '../lib/firebaseOperations'
 
 export default function Sidebar () {
+  const [sessions, setSessions] = useState([])
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      const fetchedSessions = await getSessions()
+      setSessions(fetchedSessions)
+    }
+    fetchSessions()
+  }, [])
   return (
     <Box
       position='static'
@@ -247,9 +283,38 @@ export default function Sidebar () {
           Customer Support
         </Typography>
       </Toolbar>
+      <List
+        sx={{
+          width: '100%',
+          py: 1,
+          px: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px'
+        }}
+      >
+        {sessions.map(session => (
+          <ListItemButton
+            key={session.id}
+            onClick={() => onSessionSelect(session.id)}
+            sx={{
+              '&:hover': { backgroundColor: 'white' },
+              bgcolor: 'grey',
+              borderRadius: '10px',
+              py: '4px'
+            }}
+          >
+            <ListItemIcon>
+              <ArrowForwardIosIcon />
+            </ListItemIcon>
+            <ListItemText primary={session.name} />
+          </ListItemButton>
+        ))}
+      </List>
     </Box>
   )
 }
+
 
 
 //lib/firebase.js
@@ -277,16 +342,73 @@ export const db = getFirestore(app)
 import { Box } from '@mui/material'
 import Sidebar from './/components/Sidebar'
 import ChatInterface from './/components/ChatInterface'
+import { useState } from 'react'
 
 export default function Home () {
+  const [selectedSession, setSelectedSession] = useState(null)
+
+  const handleSessionSelect = sessionId => {
+    setSelectedSession(sessionId)
+    // You might want to load the messages for this session here
+  }
+
+  const handleNewSession = (sessionId, firstMessage) => {
+    // You might want to update the sidebar with the new session here
+  }
   return (
     <Box
       component='section'
       display='flex'
       sx={{ flexDirection: 'row', height: '100vh' }}
     >
-      <Sidebar />
-      <ChatInterface />
+      <Sidebar onSessionSelect={handleSessionSelect} />
+      <ChatInterface onNewSession={handleNewSession} />
     </Box>
   )
+}
+
+
+
+
+
+
+
+
+
+// lib/firebaseOperations.js
+import { db } from './firebase'
+import { collection, addDoc, getDocs, updateDoc, doc } from 'firebase/firestore'
+
+export const createSession = async firstMessage => {
+  try {
+    const docRef = await addDoc(collection(db, 'sessions'), {
+      name: firstMessage,
+      messages: [{ role: 'user', content: firstMessage }]
+    })
+    return docRef.id
+  } catch (e) {
+    console.error('Error adding document: ', e)
+    return null
+  }
+}
+
+export const updateSession = async (sessionId, newMessage) => {
+  try {
+    const sessionRef = doc(db, 'sessions', sessionId)
+    await updateDoc(sessionRef, {
+      messages: newMessage
+    })
+  } catch (e) {
+    console.error('Error updating document: ', e)
+  }
+}
+
+export const getSessions = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'sessions'))
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+  } catch (e) {
+    console.error('Error getting documents: ', e)
+    return []
+  }
 }

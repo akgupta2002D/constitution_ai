@@ -4,8 +4,13 @@ import {
   Typography,
   List,
   ListItem,
-  ListItemText
+  ListItemText,
+  ListItemButton,
+  ListItemIcon
 } from '@mui/material'
+import SendIcon from '@mui/icons-material/Send'
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
+
 import { useState, useEffect } from 'react'
 import { getSessions } from '../lib/firebaseOperations'
 
@@ -40,20 +45,32 @@ export default function Sidebar () {
           Customer Support
         </Typography>
       </Toolbar>
-      <List sx={{ width: '100%', py: 2, px: 1 }}>
+      <List
+        sx={{
+          width: '100%',
+          py: 1,
+          px: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px'
+        }}
+      >
         {sessions.map(session => (
-          <ListItem
+          <ListItemButton
             key={session.id}
-            onClick={() => onSessionSelect(session.id, session.messages)}
+            onClick={() => onSessionSelect(session.id)}
             sx={{
               '&:hover': { backgroundColor: 'white' },
               bgcolor: 'grey',
               borderRadius: '10px',
-              py: 1
+              py: '4px'
             }}
           >
+            <ListItemIcon>
+              <ArrowForwardIosIcon />
+            </ListItemIcon>
             <ListItemText primary={session.name} />
-          </ListItem>
+          </ListItemButton>
         ))}
       </List>
     </Box>

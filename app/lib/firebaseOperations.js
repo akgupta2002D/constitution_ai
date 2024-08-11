@@ -1,5 +1,5 @@
 // lib/firebaseOperations.js
-import { db } from './firebase'
+import { db } from '../../firebase'
 import { collection, addDoc, getDocs, updateDoc, doc } from 'firebase/firestore'
 
 export const createSession = async firstMessage => {
