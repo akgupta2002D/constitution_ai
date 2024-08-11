@@ -5,9 +5,29 @@ import OpenAI from 'openai'
 const SYSTEM_PROMPT = 'You are an expert parent!'
 const MODEL_NAME = 'gpt-4' // Using GPT-4 model
 
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+})
+
+export async function GET () {
+  try {
+    console.log('OpenAI API Key:', process.env.OPENAI_API_KEY)
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: 'Hello, World!' }]
+    })
+    return NextResponse.json(response)
+  } catch (error) {
+    console.error('OpenAI Error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
 export async function POST (req) {
   // Initialize the OpenAI client
-  const openai = new OpenAI()
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+  })
 
   // Parse the incoming request body
   const userMessages = await req.json()

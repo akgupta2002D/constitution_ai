@@ -8,7 +8,6 @@ import {
   ListItemButton,
   ListItemIcon
 } from '@mui/material'
-import SendIcon from '@mui/icons-material/Send'
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 
 import { useState, useEffect } from 'react'
