@@ -77,8 +77,9 @@ export default function ChatInterface ({ onNewSession }) {
             "I'm sorry, but I encountered an error. Please try again later."
         }
       ])
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }
 
   const handleKeyPress = event => {

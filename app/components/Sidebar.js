@@ -6,7 +6,9 @@ import {
   ListItem,
   ListItemText,
   ListItemButton,
-  ListItemIcon
+  ListItemIcon,
+  Link,
+  Button
 } from '@mui/material'
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 
@@ -58,6 +60,13 @@ export default function Sidebar () {
           Customer Support
         </Typography>
       </Toolbar>
+      <Box sx={{ position: 'fixed', top: 20, right: 20 }}>
+        <Link href='/upload'>
+          <Button variant='contained' color='primary'>
+            Manage Documents
+          </Button>
+        </Link>
+      </Box>
       <List
         sx={{
           width: '100%',
