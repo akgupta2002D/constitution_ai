@@ -32,7 +32,21 @@ export default function Sidebar () {
         flexShrink: '1',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center'
+        alignItems: 'center',
+        overflowY: 'scroll',
+        '&::-webkit-scrollbar': {
+          width: '0.4em'
+        },
+        '&::-webkit-scrollbar-track': {
+          boxShadow: 'inset 0 0 6px rgba(0,0,0,0.00)',
+          webkitBoxShadow: 'inset 0 0 6px rgba(0,0,0,0.00)'
+        },
+        '&::-webkit-scrollbar-thumb': {
+          backgroundColor: 'rgba(0,0,0,.1)',
+          outline: '1px solid slategrey'
+        },
+        scrollbarWidth: 'thin',
+        scrollbarColor: 'rgba(0,0,0,.1) transparent'
       }}
     >
       <Toolbar>
@@ -62,7 +76,8 @@ export default function Sidebar () {
               '&:hover': { backgroundColor: 'white' },
               bgcolor: 'grey',
               borderRadius: '10px',
-              py: '4px'
+              py: '4px',
+              fontSize: '8px'
             }}
           >
             <ListItemIcon>

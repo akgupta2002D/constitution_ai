@@ -9,7 +9,7 @@ export default function ChatInterface ({ onNewSession }) {
     {
       role: 'assistant',
       content:
-        "Hi! I'm the Headstarter support assistant. How can I help you today?"
+        'Hi! I know parenting is difficult but rewarding job. I am here to help!'
     }
   ])
   const [message, setMessage] = useState('')

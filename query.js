@@ -412,3 +412,107 @@ export const getSessions = async () => {
     return []
   }
 }
+
+
+// Import the functions you need from the SDKs you need
+import { initializeApp } from 'firebase/app'
+import { getFirestore } from 'firebase/firestore'
+import { getAnalytics } from 'firebase/analytics'
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+}
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig)
+// const analytics = getAnalytics(app)
+
+// Export db
+export const db = getFirestore(app)
+
+
+// api/chat/route.js
+
+import { NextResponse } from 'next/server'
+import OpenAI from 'openai'
+
+// Define constants for easy configuration
+const SYSTEM_PROMPT = 'You are an expert parent!'
+const MODEL_NAME = 'gpt-4' // Using GPT-4 model
+
+export async function GET () {
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+  })
+  try {
+    console.log('OpenAI API Key:', process.env.OPENAI_API_KEY)
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: 'Hello, World!' }]
+    })
+    return NextResponse.json(response)
+  } catch (error) {
+    console.error('OpenAI Error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
+export async function POST (req) {
+  // Initialize the OpenAI client
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+  })
+
+  // Parse the incoming request body
+  const userMessages = await req.json()
+
+  // Create a ReadableStream to handle the streaming response
+  const stream = new ReadableStream({
+    async start (controller) {
+      // Initialize a TextEncoder to convert strings to Uint8Array
+      const encoder = new TextEncoder()
+
+      try {
+        // Create a chat completion request to the OpenAI API
+        const completion = await openai.chat.completions.create({
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            ...userMessages
+          ],
+          model: MODEL_NAME,
+          stream: true // Enable streaming responses
+        })
+
+        // Iterate over the streamed chunks of the response
+        for await (const chunk of completion) {
+          const content = chunk.choices[0]?.delta?.content
+          if (content) {
+            // Encode and enqueue the content to the stream
+            const encodedContent = encoder.encode(content)
+            controller.enqueue(encodedContent)
+          }
+        }
+      } catch (error) {
+        // Log and handle any errors that occur during streaming
+        console.error('Error in OpenAI stream:', error)
+        controller.error(error)
+      } finally {
+        // Close the stream when done
+        controller.close()
+      }
+    }
+  })
+
+  // Return the stream as the response
+  return new NextResponse(stream)
+}
