@@ -17,15 +17,48 @@ export async function addDocument (text, metadata = {}) {
 
   // Assume createEmbedding is implemented in openai.js
   const { createEmbedding } = await import('./openai')
-  const embedding = await createEmbedding(text)
 
-  await index.upsert([
-    {
-      id: `doc_${Date.now()}`,
-      values: embedding,
-      metadata: { ...metadata, text }
+  // Split the text into chunks
+  const chunks = splitTextIntoChunks(text, 2000) // Adjust chunk size as needed
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i]
+    const embedding = await createEmbedding(chunk)
+
+    await index.upsert([
+      {
+        id: `doc_${Date.now()}_chunk_${i}`,
+        values: embedding,
+        metadata: {
+          ...metadata,
+          text: chunk,
+          chunk_index: i,
+          total_chunks: chunks.length
+        }
+      }
+    ])
+  }
+}
+
+function splitTextIntoChunks (text, maxChunkLength) {
+  const chunks = []
+  let start = 0
+
+  while (start < text.length) {
+    let end = start + maxChunkLength
+    if (end > text.length) end = text.length
+
+    // Try to find a natural break point (e.g., end of a sentence)
+    if (end < text.length) {
+      const naturalBreak = text.lastIndexOf('.', end)
+      if (naturalBreak > start) end = naturalBreak + 1
     }
-  ])
+
+    chunks.push(text.slice(start, end).trim())
+    start = end
+  }
+
+  return chunks
 }
 
 export async function queryPinecone (query, topK = 3) {

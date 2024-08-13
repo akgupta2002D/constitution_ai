@@ -13,11 +13,12 @@ export default function ChatInterface ({ session, onNewSession }) {
     ),
     li: props => <li style={{ marginBottom: '8px' }} {...props} />
   }
+
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
       content:
-        'Hi! I know parenting is difficult but rewarding job. I am here to help!'
+        'Namaste! Let me answer your questions about the constitution of Nepal'
     }
   ])
   const [message, setMessage] = useState('')
@@ -26,14 +27,22 @@ export default function ChatInterface ({ session, onNewSession }) {
 
   useEffect(() => {
     if (session) {
-      setMessages(session.messages || [])
+      setMessages(
+        session.messages || [
+          {
+            role: 'assistant',
+            content:
+              'Namaste! Let me answer your questions about the constitution of Nepal'
+          }
+        ]
+      )
       setSessionId(session.id)
     } else {
       setMessages([
         {
           role: 'assistant',
           content:
-            'Hi! I know parenting is difficult but rewarding job. I am here to help!'
+            'Namaste! Let me answer your questions about the constitution of Nepal'
         }
       ])
       setSessionId(null)
@@ -44,23 +53,21 @@ export default function ChatInterface ({ session, onNewSession }) {
     if (!message.trim()) return
     setIsLoading(true)
 
-    const newMessages = [
-      ...messages,
-      { role: 'user', content: message },
-      { role: 'assistant', content: '' }
-    ]
+    const newUserMessage = { role: 'user', content: message }
+    const updatedMessages = [...messages, newUserMessage]
 
     setMessage('')
-    setMessages(newMessages)
+    setMessages(updatedMessages)
 
-    if (!sessionId) {
-      const newSessionId = await createSession(message)
-      setSessionId(newSessionId)
-      onNewSession(newSessionId, message)
-    } else {
-      // If sessionId exists, update the existing session
-      await updateSession(sessionId, newMessages)
+    let currentSessionId = sessionId
+    if (!currentSessionId) {
+      currentSessionId = await createSession(message)
+      setSessionId(currentSessionId)
+      onNewSession(currentSessionId, message)
     }
+
+    // Update session with user message
+    await updateSession(currentSessionId, updatedMessages)
 
     try {
       const response = await fetch('/api/chat', {
@@ -68,7 +75,7 @@ export default function ChatInterface ({ session, onNewSession }) {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(newMessages)
+        body: JSON.stringify(updatedMessages)
       })
 
       if (!response.ok) {
@@ -78,32 +85,37 @@ export default function ChatInterface ({ session, onNewSession }) {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
 
+      let assistantMessage = { role: 'assistant', content: '' }
+      setMessages(prevMessages => [...prevMessages, assistantMessage])
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
         const text = decoder.decode(value, { stream: true })
+        assistantMessage.content += text
         setMessages(prevMessages => {
-          const updatedMessages = [
+          const newMessages = [
             ...prevMessages.slice(0, -1),
-            {
-              ...prevMessages[prevMessages.length - 1],
-              content: prevMessages[prevMessages.length - 1].content + text
-            }
+            { ...assistantMessage }
           ]
-          updateSession(sessionId, updatedMessages)
-          return updatedMessages
+          // Update session with each chunk of assistant's response
+          updateSession(currentSessionId, newMessages)
+          return newMessages
         })
       }
     } catch (error) {
       console.error('Error:', error)
-      setMessages(prevMessages => [
-        ...prevMessages,
-        {
-          role: 'assistant',
-          content:
-            "I'm sorry, but I encountered an error. Please try again later."
-        }
-      ])
+      const errorMessage = {
+        role: 'assistant',
+        content:
+          "I'm sorry, but I encountered an error. Please try again later."
+      }
+      setMessages(prevMessages => {
+        const newMessages = [...prevMessages, errorMessage]
+        // Update session with error message
+        updateSession(currentSessionId, newMessages)
+        return newMessages
+      })
     } finally {
       setIsLoading(false)
     }
@@ -141,6 +153,7 @@ export default function ChatInterface ({ session, onNewSession }) {
           direction={'column'}
           spacing={2}
           flexGrow={1}
+          py={6}
           overflow='auto'
           maxHeight='100%'
           sx={{
@@ -171,7 +184,8 @@ export default function ChatInterface ({ session, onNewSession }) {
                 bgcolor={message.role === 'assistant' ? 'black' : 'white'}
                 color={message.role === 'assistant' ? 'white' : 'black'}
                 borderRadius={5}
-                p={2}
+                px={6}
+                py={2}
                 sx={{ maxWidth: '70%' }}
               >
                 {message.role === 'assistant' ? (

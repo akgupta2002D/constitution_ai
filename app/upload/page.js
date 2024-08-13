@@ -62,13 +62,14 @@ export default function DocumentUpload () {
   }
 
   return (
-    <Box sx={{ m: 4, px: 20 }}>
+    <Box sx={{ m: 4, px: 20, maxHeight: '100vh' }}>
       <Typography variant='h4' gutterBottom>
         Document Upload
       </Typography>
       <Typography variant='h6' gutterBottom>
         Add text to the Knowledge Base
       </Typography>
+
       <Box component='form' onSubmit={handleSubmit} sx={{ mb: 4 }}>
         <TextField
           multiline
