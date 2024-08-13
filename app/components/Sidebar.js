@@ -12,6 +12,7 @@ import {
 } from '@mui/material'
 
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
+import AddIcon from '@mui/icons-material/Add'
 
 import { useState, useEffect } from 'react'
 import { getSessions } from '../lib/firebaseOperations'
@@ -52,7 +53,9 @@ export default function Sidebar ({ onSessionSelect }) {
         scrollbarColor: 'rgba(0,0,0,.1) transparent'
       }}
     >
-      <Toolbar>
+      <Toolbar
+        sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}
+      >
         <Typography
           variant='h6'
           component='div'
@@ -60,14 +63,13 @@ export default function Sidebar ({ onSessionSelect }) {
         >
           Customer Support
         </Typography>
+        <AddIcon
+          sx={{ color: 'white', cursor: 'pointer' }}
+          onClick={() => window.location.reload()}
+        />
       </Toolbar>
-      <Box sx={{ position: 'fixed', top: 20, right: 20 }}>
-        <Link href='/upload'>
-          <Button variant='contained' color='primary'>
-            Manage Documents
-          </Button>
-        </Link>
-      </Box>
+
+      <Box sx={{ width: '100%', textAlign: 'center', py: 1 }}></Box>
       <List
         sx={{
           width: '100%',
@@ -75,7 +77,12 @@ export default function Sidebar ({ onSessionSelect }) {
           px: 1,
           display: 'flex',
           flexDirection: 'column',
-          gap: '6px'
+          gap: '6px',
+          overflowY: 'auto',
+          '::-webkit-scrollbar': {
+            display: 'none'
+          },
+          scrollbarWidth: 'none'
         }}
       >
         {sessions.map(session => (
@@ -83,20 +90,46 @@ export default function Sidebar ({ onSessionSelect }) {
             key={session.id}
             onClick={() => onSessionSelect(session)}
             sx={{
-              '&:hover': { backgroundColor: 'white' },
-              bgcolor: 'grey',
+              '&:hover': { backgroundColor: 'white', color: 'black' },
+              bgcolor: 'transparent',
               borderRadius: '10px',
               py: '4px',
-              fontSize: '8px'
+              fontSize: '8px',
+              color: 'white',
+              transition: 'background-color 0.3s ease, color 0.3s ease'
             }}
           >
             <ListItemIcon>
-              <ArrowForwardIosIcon />
+              <ArrowForwardIosIcon sx={{ color: 'white' }} />
             </ListItemIcon>
-            <ListItemText primary={session.name} />
+            <ListItemText
+              primary={
+                session.name.length > 20
+                  ? `${session.name.slice(0, 20)}...`
+                  : session.name
+              }
+            />
           </ListItemButton>
         ))}
       </List>
+      <Box
+        sx={{
+          display: 'flex',
+          marginTop: 'auto',
+          paddingBottom: '48px',
+          paddingTop: '16px'
+        }}
+      >
+        <Link href='/upload'>
+          <Button
+            variant='contained'
+            color='primary'
+            sx={{ bgcolor: '#003893' }}
+          >
+            Manage Documents
+          </Button>
+        </Link>
+      </Box>
     </Box>
   )
 }

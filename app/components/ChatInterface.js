@@ -1,9 +1,7 @@
-'use client'
-
+import React, { useState, useRef, useEffect } from 'react'
 import { Box, Button, Stack, TextField, Typography } from '@mui/material'
-import { useState, useRef, useEffect } from 'react'
-import { createSession, updateSession } from '../lib/firebaseOperations'
 import ReactMarkdown from 'react-markdown'
+import { createSession, updateSession } from '../lib/firebaseOperations'
 
 export default function ChatInterface ({ session, onNewSession }) {
   const MarkdownComponents = {
@@ -24,6 +22,7 @@ export default function ChatInterface ({ session, onNewSession }) {
   const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [sessionId, setSessionId] = useState(null)
+  const [isTyping, setIsTyping] = useState(false)
 
   useEffect(() => {
     if (session) {
@@ -52,6 +51,7 @@ export default function ChatInterface ({ session, onNewSession }) {
   const sendMessage = async () => {
     if (!message.trim()) return
     setIsLoading(true)
+    setIsTyping(true)
 
     const newUserMessage = { role: 'user', content: message }
     const updatedMessages = [...messages, newUserMessage]
@@ -66,7 +66,6 @@ export default function ChatInterface ({ session, onNewSession }) {
       onNewSession(currentSessionId, message)
     }
 
-    // Update session with user message
     await updateSession(currentSessionId, updatedMessages)
 
     try {
@@ -87,6 +86,7 @@ export default function ChatInterface ({ session, onNewSession }) {
 
       let assistantMessage = { role: 'assistant', content: '' }
       setMessages(prevMessages => [...prevMessages, assistantMessage])
+      setIsTyping(false) // Hide typing indicator as soon as we start receiving the response
 
       while (true) {
         const { done, value } = await reader.read()
@@ -98,7 +98,6 @@ export default function ChatInterface ({ session, onNewSession }) {
             ...prevMessages.slice(0, -1),
             { ...assistantMessage }
           ]
-          // Update session with each chunk of assistant's response
           updateSession(currentSessionId, newMessages)
           return newMessages
         })
@@ -112,12 +111,12 @@ export default function ChatInterface ({ session, onNewSession }) {
       }
       setMessages(prevMessages => {
         const newMessages = [...prevMessages, errorMessage]
-        // Update session with error message
         updateSession(currentSessionId, newMessages)
         return newMessages
       })
     } finally {
       setIsLoading(false)
+      setIsTyping(false) // Ensure typing indicator is hidden in case of error
     }
   }
 
@@ -145,8 +144,26 @@ export default function ChatInterface ({ session, onNewSession }) {
       flexDirection='column'
       justifyContent='center'
       alignItems='center'
-      px={10}
-      sx={{ flexBasis: '80%', bgcolor: '#1E1E22', flexShrink: '3' }}
+      px={{ xs: 2, sm: 3, md: 16 }}
+      sx={{
+        position: 'relative',
+        flexBasis: '80%',
+        flexShrink: '3',
+        overflow: 'hidden',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: '-10px',
+          left: '-20px',
+          right: '-10px',
+          bottom: '-20px',
+          backgroundImage: 'url(./nepal_mountain.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          filter: 'blur(7px)',
+          zIndex: -1
+        }
+      }}
     >
       <Stack direction={'column'} width='100%' height='700px' p={3} spacing={3}>
         <Stack
@@ -198,9 +215,23 @@ export default function ChatInterface ({ session, onNewSession }) {
               </Box>
             </Box>
           ))}
+          {isTyping && (
+            <Box display='flex' justifyContent='flex-start' mt={2}>
+              <Box
+                bgcolor='black'
+                color='white'
+                borderRadius={5}
+                px={6}
+                py={2}
+                sx={{ maxWidth: '70%' }}
+              >
+                <Typography>Typing...</Typography>
+              </Box>
+            </Box>
+          )}
           <div ref={messagesEndRef} />
         </Stack>
-        <Stack direction={'row'} px={6} spacing={2}>
+        <Stack direction={'row'} spacing={2}>
           <TextField
             sx={{ bgcolor: 'white', borderRadius: '10px' }}
             label='Message'
@@ -215,7 +246,12 @@ export default function ChatInterface ({ session, onNewSession }) {
             variant='contained'
             onClick={sendMessage}
             disabled={isLoading}
-            sx={{ bgcolor: 'black', color: 'white', borderRadius: '10px' }}
+            sx={{
+              bgcolor: '#003893',
+              color: 'white',
+              borderRadius: '10px',
+              minWidth: '100px'
+            }}
           >
             {isLoading ? 'Sending...' : 'Send'}
           </Button>
