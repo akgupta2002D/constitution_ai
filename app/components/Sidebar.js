@@ -32,6 +32,7 @@ export default function Sidebar ({ onSessionSelect }) {
     <Box
       position='static'
       sx={{
+        minWidth: '300px',
         bgcolor: 'black',
         flexBasis: '20%',
         flexShrink: '1',
