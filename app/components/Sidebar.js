@@ -15,7 +15,7 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 import { useState, useEffect } from 'react'
 import { getSessions } from '../lib/firebaseOperations'
 
-export default function Sidebar () {
+export default function Sidebar ({ onSessionSelect }) {
   const [sessions, setSessions] = useState([])
 
   useEffect(() => {
@@ -80,7 +80,7 @@ export default function Sidebar () {
         {sessions.map(session => (
           <ListItemButton
             key={session.id}
-            onClick={() => onSessionSelect(session.id)}
+            onClick={() => onSessionSelect(session)}
             sx={{
               '&:hover': { backgroundColor: 'white' },
               bgcolor: 'grey',

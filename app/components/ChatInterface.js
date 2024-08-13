@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createSession, updateSession } from '../lib/firebaseOperations'
 import ReactMarkdown from 'react-markdown'
 
-export default function ChatInterface ({ onNewSession }) {
+export default function ChatInterface ({ session, onNewSession }) {
   const MarkdownComponents = {
     p: props => <Typography {...props} paragraph />,
     ul: props => (
@@ -24,6 +24,22 @@ export default function ChatInterface ({ onNewSession }) {
   const [isLoading, setIsLoading] = useState(false)
   const [sessionId, setSessionId] = useState(null)
 
+  useEffect(() => {
+    if (session) {
+      setMessages(session.messages || [])
+      setSessionId(session.id)
+    } else {
+      setMessages([
+        {
+          role: 'assistant',
+          content:
+            'Hi! I know parenting is difficult but rewarding job. I am here to help!'
+        }
+      ])
+      setSessionId(null)
+    }
+  }, [session])
+
   const sendMessage = async () => {
     if (!message.trim()) return
     setIsLoading(true)
@@ -41,6 +57,9 @@ export default function ChatInterface ({ onNewSession }) {
       const newSessionId = await createSession(message)
       setSessionId(newSessionId)
       onNewSession(newSessionId, message)
+    } else {
+      // If sessionId exists, update the existing session
+      await updateSession(sessionId, newMessages)
     }
 
     try {

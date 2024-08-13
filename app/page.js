@@ -8,13 +8,15 @@ import { useState } from 'react'
 export default function Home () {
   const [selectedSession, setSelectedSession] = useState(null)
 
-  const handleSessionSelect = sessionId => {
-    setSelectedSession(sessionId)
-    // You might want to load the messages for this session here
+  const handleSessionSelect = session => {
+    setSelectedSession(session)
   }
 
   const handleNewSession = (sessionId, firstMessage) => {
-    // You might want to update the sidebar with the new session here
+    setSelectedSession({
+      id: sessionId,
+      messages: [{ role: 'user', content: firstMessage }]
+    })
   }
   return (
     <Box
@@ -23,7 +25,10 @@ export default function Home () {
       sx={{ flexDirection: 'row', height: '100vh' }}
     >
       <Sidebar onSessionSelect={handleSessionSelect} />
-      <ChatInterface onNewSession={handleNewSession} />
+      <ChatInterface
+        session={selectedSession}
+        onNewSession={handleNewSession}
+      />
     </Box>
   )
 }

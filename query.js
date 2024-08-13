@@ -172,8 +172,16 @@ export default function AdminDocumentUpload () {
 import { Box, Button, Stack, TextField, Typography } from '@mui/material'
 import { useState, useRef, useEffect } from 'react'
 import { createSession, updateSession } from '../lib/firebaseOperations'
+import ReactMarkdown from 'react-markdown'
 
-export default function ChatInterface ({ onNewSession }) {
+export default function ChatInterface ({ session, onNewSession }) {
+  const MarkdownComponents = {
+    p: props => <Typography {...props} paragraph />,
+    ul: props => (
+      <ul style={{ paddingLeft: '20px', marginBottom: '16px' }} {...props} />
+    ),
+    li: props => <li style={{ marginBottom: '8px' }} {...props} />
+  }
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -184,6 +192,22 @@ export default function ChatInterface ({ onNewSession }) {
   const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [sessionId, setSessionId] = useState(null)
+
+  useEffect(() => {
+    if (session) {
+      setMessages(session.messages || [])
+      setSessionId(session.id)
+    } else {
+      setMessages([
+        {
+          role: 'assistant',
+          content:
+            'Hi! I know parenting is difficult but rewarding job. I am here to help!'
+        }
+      ])
+      setSessionId(null)
+    }
+  }, [session])
 
   const sendMessage = async () => {
     if (!message.trim()) return
@@ -202,6 +226,9 @@ export default function ChatInterface ({ onNewSession }) {
       const newSessionId = await createSession(message)
       setSessionId(newSessionId)
       onNewSession(newSessionId, message)
+    } else {
+      // If sessionId exists, update the existing session
+      await updateSession(sessionId, newMessages)
     }
 
     try {
@@ -304,8 +331,10 @@ export default function ChatInterface ({ onNewSession }) {
           {messages.map((message, index) => (
             <Box
               key={index}
-              display="flex"
-              justifyContent={message.role === 'assistant' ? 'flex-start' : 'flex-end'}
+              display='flex'
+              justifyContent={
+                message.role === 'assistant' ? 'flex-start' : 'flex-end'
+              }
             >
               <Box
                 bgcolor={message.role === 'assistant' ? 'black' : 'white'}
@@ -315,7 +344,9 @@ export default function ChatInterface ({ onNewSession }) {
                 sx={{ maxWidth: '70%' }}
               >
                 {message.role === 'assistant' ? (
-                  <ReactMarkdown components={MarkdownComponents}>{message.content}</ReactMarkdown>
+                  <ReactMarkdown components={MarkdownComponents}>
+                    {message.content}
+                  </ReactMarkdown>
                 ) : (
                   <Typography>{message.content}</Typography>
                 )}
@@ -349,6 +380,7 @@ export default function ChatInterface ({ onNewSession }) {
   )
 }
 
+
 //app/components/Sidebar.js
 import {
   Box,
@@ -367,7 +399,7 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 import { useState, useEffect } from 'react'
 import { getSessions } from '../lib/firebaseOperations'
 
-export default function Sidebar () {
+export default function Sidebar ({ onSessionSelect }) {
   const [sessions, setSessions] = useState([])
 
   useEffect(() => {
@@ -432,7 +464,7 @@ export default function Sidebar () {
         {sessions.map(session => (
           <ListItemButton
             key={session.id}
-            onClick={() => onSessionSelect(session.id)}
+            onClick={() => onSessionSelect(session)}
             sx={{
               '&:hover': { backgroundColor: 'white' },
               bgcolor: 'grey',
