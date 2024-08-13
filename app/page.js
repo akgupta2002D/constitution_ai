@@ -18,17 +18,27 @@ export default function Home () {
       messages: [{ role: 'user', content: firstMessage }]
     })
   }
+
   return (
     <Box
       component='section'
       display='flex'
-      sx={{ flexDirection: 'row', height: '100vh' }}
+      sx={{
+        flexDirection: { xs: 'column', sm: 'row' },
+        height: '100vh'
+      }}
     >
       <Sidebar onSessionSelect={handleSessionSelect} />
-      <ChatInterface
-        session={selectedSession}
-        onNewSession={handleNewSession}
-      />
+      <Box
+        sx={{
+          flexGrow: 1
+        }}
+      >
+        <ChatInterface
+          session={selectedSession}
+          onNewSession={handleNewSession}
+        />
+      </Box>
     </Box>
   )
 }
