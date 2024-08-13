@@ -69,7 +69,7 @@ export default function ChatInterface ({ session, onNewSession }) {
     await updateSession(currentSessionId, updatedMessages)
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch('/api/llamaChat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
