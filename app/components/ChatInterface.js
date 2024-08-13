@@ -257,6 +257,22 @@ export default function ChatInterface ({ session, onNewSession }) {
           </Button>
         </Stack>
       </Stack>
+
+      {/* <Box
+        sx={{
+          position: 'fixed',
+          bottom: 16,
+          right: 16,
+          width: 400,
+          height: 500,
+          background: 'transparent',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          zIndex: 10
+        }}
+      >
+        <ThreeScene />
+      </Box> */}
     </Box>
   )
 }
