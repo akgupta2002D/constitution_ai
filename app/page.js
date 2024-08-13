@@ -31,7 +31,7 @@ export default function Home () {
       <Sidebar onSessionSelect={handleSessionSelect} />
       <Box
         sx={{
-          flexGrow: 1
+          flexGrow: { xs: '1', sm: '1' }
         }}
       >
         <ChatInterface

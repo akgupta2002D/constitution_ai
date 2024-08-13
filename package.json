@@ -24,7 +24,7 @@
     "gpt-3-encoder": "^1.1.4",
     "next": "14.2.5",
     "node-fetch": "^3.3.2",
-    "openai": "^4.55.4",
+    "openai": "^4.55.5",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^1.1.1",
     "pdf-text-extract": "^1.5.0",
@@ -36,7 +36,7 @@
     "uuid": "^10.0.0"
   },
   "devDependencies": {
-    "eslint": "^8",
+    "eslint": "^9.9.0",
     "eslint-config-next": "14.2.5"
   }
 }
