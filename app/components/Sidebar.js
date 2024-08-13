@@ -8,7 +8,8 @@ import {
   ListItemButton,
   ListItemIcon,
   Link,
-  Button
+  Button,
+  Avatar
 } from '@mui/material'
 
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
@@ -53,23 +54,41 @@ export default function Sidebar ({ onSessionSelect }) {
         scrollbarColor: 'rgba(0,0,0,.1) transparent'
       }}
     >
-      <Toolbar
-        sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}
-      >
-        <Typography
-          variant='h6'
-          component='div'
-          sx={{ flexGrow: 1, color: 'white' }}
-        >
-          Customer Support
-        </Typography>
-        <AddIcon
-          sx={{ color: 'white', cursor: 'pointer' }}
-          onClick={() => window.location.reload()}
+      <Box sx={{ width: '100%', textAlign: 'center', py: 2 }}>
+        <Avatar
+          src='./logo.webp'
+          alt='Logo'
+          sx={{
+            width: 100,
+            height: 100,
+            mx: 'auto',
+            boxShadow: '0 0 15px rgba(255, 255, 255, 0.8)' // Adjust glow size and color as needed
+          }}
         />
+      </Box>
+
+      <Toolbar sx={{ width: '100%', textAlign: 'center' }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            width: '100%'
+          }}
+          onClick={() => window.location.reload()}
+        >
+          <Typography
+            variant='h6'
+            component='div'
+            sx={{ color: 'white', mr: 1 }}
+          >
+            New Chat
+          </Typography>
+          <AddIcon sx={{ color: 'white' }} />
+        </Box>
       </Toolbar>
 
-      <Box sx={{ width: '100%', textAlign: 'center', py: 1 }}></Box>
       <List
         sx={{
           width: '100%',

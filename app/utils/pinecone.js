@@ -1,7 +1,15 @@
+// Author: Ankit Gupta
+// Project: Constitution AI
+// Created during Headstarter Fellowship
+// Description: This module handles interactions with the Pinecone database for the Constitution AI project.
+// It supports initializing the Pinecone connection, adding documents by processing and embedding chunks of text,
+// querying for similar documents, and listing documents in the index.
+
 import { Pinecone } from '@pinecone-database/pinecone'
 
 let pinecone
 
+// Initializes a single Pinecone connection instance
 export async function initPinecone () {
   if (!pinecone) {
     pinecone = new Pinecone({
@@ -11,14 +19,12 @@ export async function initPinecone () {
   return pinecone
 }
 
+// Adds a document to the Pinecone index by splitting the text into chunks and creating embeddings for each
 export async function addDocument (text, metadata = {}) {
   const pinecone = await initPinecone()
   const index = pinecone.index(process.env.PINECONE_INDEX_NAME)
 
-  // Assume createEmbedding is implemented in openai.js
   const { createEmbedding } = await import('./openai')
-
-  // Split the text into chunks
   const chunks = splitTextIntoChunks(text, 2000) // Adjust chunk size as needed
 
   for (let i = 0; i < chunks.length; i++) {
@@ -40,6 +46,7 @@ export async function addDocument (text, metadata = {}) {
   }
 }
 
+// Helper function to split text into manageable chunks with an attempt to preserve complete sentences
 function splitTextIntoChunks (text, maxChunkLength) {
   const chunks = []
   let start = 0
@@ -48,7 +55,6 @@ function splitTextIntoChunks (text, maxChunkLength) {
     let end = start + maxChunkLength
     if (end > text.length) end = text.length
 
-    // Try to find a natural break point (e.g., end of a sentence)
     if (end < text.length) {
       const naturalBreak = text.lastIndexOf('.', end)
       if (naturalBreak > start) end = naturalBreak + 1
@@ -61,6 +67,7 @@ function splitTextIntoChunks (text, maxChunkLength) {
   return chunks
 }
 
+// Queries the Pinecone index with a given text query and returns the best matching document texts
 export async function queryPinecone (query, topK = 3) {
   const pinecone = await initPinecone()
   const index = pinecone.index(process.env.PINECONE_INDEX_NAME)
@@ -77,11 +84,11 @@ export async function queryPinecone (query, topK = 3) {
   return results.matches.map(match => match.metadata.text)
 }
 
+// Lists all documents in the Pinecone index, useful for administrative purposes
 export async function listDocuments () {
   const pinecone = await initPinecone()
-  const index = pinecone.Index(process.env.PINECONE_INDEX_NAME)
+  const index = pinecone.index(process.env.PINECONE_INDEX_NAME)
 
-  // This is a simple implementation and might need pagination for large datasets
   const queryResponse = await index.query({
     vector: Array(1536).fill(0), // Assuming 1536 is your vector dimension
     topK: 10000, // Adjust based on your needs

@@ -1,3 +1,11 @@
+/**
+ * Author: Ankit Gupta
+ * Project: Nepal Constitution AI
+ * App created during Headstarter fellowship
+ *
+ * Lists documents from Pinecone database for Nepal Constitution AI.
+ */
+
 import { NextResponse } from 'next/server'
 import { listDocuments } from '../../../utils/pinecone'
 

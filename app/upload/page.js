@@ -63,13 +63,15 @@ export default function DocumentUpload () {
 
   return (
     <Box sx={{ m: 4, px: 20, maxHeight: '100vh' }}>
+      <Button variant='contained' href='/' sx={{ bgcolor: '#003893' }}>
+        Go back
+      </Button>
       <Typography variant='h4' gutterBottom>
         Document Upload
       </Typography>
       <Typography variant='h6' gutterBottom>
         Add text to the Knowledge Base
       </Typography>
-
       <Box component='form' onSubmit={handleSubmit} sx={{ mb: 4 }}>
         <TextField
           multiline
@@ -80,7 +82,12 @@ export default function DocumentUpload () {
           placeholder='Enter document text'
           sx={{ mb: 2 }}
         />
-        <Button type='submit' variant='contained' disabled={isLoading}>
+        <Button
+          type='submit'
+          variant='contained'
+          disabled={isLoading}
+          sx={{ bgcolor: '#003893' }}
+        >
           {isLoading ? 'Adding...' : 'Add Document'}
         </Button>
       </Box>

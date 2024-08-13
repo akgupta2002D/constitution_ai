@@ -1,6 +1,13 @@
-// utils/llamaOpenRouter.js
+/**
+ * Author: Ankit Gupta
+ * Project: Nepal Constitution AI
+ *
+ * Configuration and utility functions for Llama model via OpenRouter.
+ */
+
 import { OpenAI } from 'openai'
 
+// Initialize OpenAI client with OpenRouter configuration
 const llamaOpenRouter = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -10,8 +17,10 @@ const llamaOpenRouter = new OpenAI({
   }
 })
 
+// Specify the Llama model to be used
 export const LLAMA_MODEL_NAME = 'meta-llama/llama-3.1-8b-instruct:free'
 
+// Generate system prompt for the Llama model
 export function createLlamaSystemPrompt () {
   return `You are an AI assistant based on the Llama 3.1 8B Instruct model, specializing in the Constitution of Nepal. Your primary function is to provide accurate, detailed, and helpful information about Nepal's constitutional framework. When responding:
 
@@ -26,6 +35,7 @@ export function createLlamaSystemPrompt () {
   9. Provide historical context or amendments when relevant to the constitutional discussion.`
 }
 
+// Enhance user prompt with relevant constitutional context
 export function enhanceLlamaPromptWithContext (originalPrompt, context) {
   if (!context.length)
     return `Question about Nepal's Constitution: ${originalPrompt}`
