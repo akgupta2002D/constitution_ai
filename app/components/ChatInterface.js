@@ -3,8 +3,16 @@
 import { Box, Button, Stack, TextField, Typography } from '@mui/material'
 import { useState, useRef, useEffect } from 'react'
 import { createSession, updateSession } from '../lib/firebaseOperations'
+import ReactMarkdown from 'react-markdown'
 
 export default function ChatInterface ({ onNewSession }) {
+  const MarkdownComponents = {
+    p: props => <Typography {...props} paragraph />,
+    ul: props => (
+      <ul style={{ paddingLeft: '20px', marginBottom: '16px' }} {...props} />
+    ),
+    li: props => <li style={{ marginBottom: '8px' }} {...props} />
+  }
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -145,8 +153,15 @@ export default function ChatInterface ({ onNewSession }) {
                 color={message.role === 'assistant' ? 'white' : 'black'}
                 borderRadius={5}
                 p={2}
+                sx={{ maxWidth: '70%' }}
               >
-                {message.content}
+                {message.role === 'assistant' ? (
+                  <ReactMarkdown components={MarkdownComponents}>
+                    {message.content}
+                  </ReactMarkdown>
+                ) : (
+                  <Typography>{message.content}</Typography>
+                )}
               </Box>
             </Box>
           ))}

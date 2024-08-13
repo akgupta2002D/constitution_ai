@@ -1,61 +1,172 @@
-//api/chat/route.js
+//app/api/chat/route.js
+// app/api/chat/route.js
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { queryPinecone } from '../../utils/pinecone'
+import {
+  enhancePromptWithContext,
+  createSystemPrompt
+} from '../../utils/openai'
 
-// Define constants for easy configuration
-const SYSTEM_PROMPT = 'You are an expert parent!'
-const MODEL_NAME = 'gpt-4' // Using GPT-4 model
+const MODEL_NAME = 'gpt-4'
 
 export async function POST (req) {
-  // Initialize the OpenAI client
-  const openai = new OpenAI()
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+  })
 
-  // Parse the incoming request body
   const userMessages = await req.json()
+  const lastUserMessage = userMessages[userMessages.length - 1].content
 
-  // Create a ReadableStream to handle the streaming response
+  // Query Pinecone for relevant context
+  const relevantDocs = await queryPinecone(lastUserMessage)
+  const enhancedPrompt = enhancePromptWithContext(lastUserMessage, relevantDocs)
+
   const stream = new ReadableStream({
     async start (controller) {
-      // Initialize a TextEncoder to convert strings to Uint8Array
       const encoder = new TextEncoder()
 
       try {
-        // Create a chat completion request to the OpenAI API
         const completion = await openai.chat.completions.create({
           messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            ...userMessages
+            { role: 'system', content: createSystemPrompt() },
+            ...userMessages.slice(0, -1),
+            { role: 'user', content: enhancedPrompt }
           ],
           model: MODEL_NAME,
-          stream: true // Enable streaming responses
+          stream: true
         })
 
-        // Iterate over the streamed chunks of the response
         for await (const chunk of completion) {
           const content = chunk.choices[0]?.delta?.content
           if (content) {
-            // Encode and enqueue the content to the stream
-            const encodedContent = encoder.encode(content)
-            controller.enqueue(encodedContent)
+            controller.enqueue(encoder.encode(content))
           }
         }
       } catch (error) {
-        // Log and handle any errors that occur during streaming
         console.error('Error in OpenAI stream:', error)
         controller.error(error)
       } finally {
-        // Close the stream when done
         controller.close()
       }
     }
   })
 
-  // Return the stream as the response
   return new NextResponse(stream)
 }
 
-//components/ChatInterface.js
 
+
+
+//app/api/rag/add-document/route.js
+import { NextResponse } from 'next/server'
+import { addDocument } from '../../../utils/pinecone'
+
+export async function POST (req) {
+  try {
+    const { text, metadata } = await req.json()
+    await addDocument(text, metadata)
+    return NextResponse.json({ message: 'Document added successfully' })
+  } catch (error) {
+    console.error('Error adding document:', error)
+    return NextResponse.json(
+      { error: 'Failed to add document' },
+      { status: 500 }
+    )
+  }
+}
+
+//app/api/rag/list-document/route.js
+import { NextResponse } from 'next/server'
+import { listDocuments } from '../../../utils/pinecone'
+
+export async function GET () {
+  try {
+    const documents = await listDocuments()
+    return NextResponse.json({ documents })
+  } catch (error) {
+    console.error('Error listing documents:', error)
+    return NextResponse.json(
+      { error: 'Failed to list documents' },
+      { status: 500 }
+    )
+  }
+}
+
+//app/api/rag/query/route.js
+import { NextResponse } from 'next/server'
+import { queryPinecone } from '../../../utils/pinecone'
+import { enhancePromptWithContext } from '../../../utils/openai'
+
+export async function POST (req) {
+  try {
+    const { query } = await req.json()
+    const relevantDocs = await queryPinecone(query)
+    const enhancedPrompt = enhancePromptWithContext(query, relevantDocs)
+    return NextResponse.json({ enhancedPrompt })
+  } catch (error) {
+    console.error('Error querying RAG:', error)
+    return NextResponse.json({ error: 'Failed to query RAG' }, { status: 500 })
+  }
+}
+
+//app/components/adminDocumentUpload.js
+'use client'
+
+import { useState } from 'react'
+import { Button, TextField, Box, Typography } from '@mui/material'
+
+export default function AdminDocumentUpload () {
+  const [text, setText] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const handleSubmit = async e => {
+    e.preventDefault()
+    setIsLoading(true)
+    setMessage('')
+
+    try {
+      const response = await fetch('/api/rag/add-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      })
+
+      if (response.ok) {
+        setMessage('Document added successfully!')
+        setText('')
+      } else {
+        setMessage('Failed to add document.')
+      }
+    } catch (error) {
+      setMessage('An error occurred.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <Box component='form' onSubmit={handleSubmit} sx={{ m: 2 }}>
+      <Typography variant='h6'>Add Document to Knowledge Base</Typography>
+      <TextField
+        multiline
+        rows={4}
+        fullWidth
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder='Enter document text'
+        sx={{ my: 2 }}
+      />
+      <Button type='submit' variant='contained' disabled={isLoading}>
+        {isLoading ? 'Adding...' : 'Add Document'}
+      </Button>
+      {message && <Typography sx={{ mt: 2 }}>{message}</Typography>}
+    </Box>
+  )
+}
+
+//app/components/ChatInterface.js
 'use client'
 
 import { Box, Button, Stack, TextField, Typography } from '@mui/material'
@@ -67,7 +178,7 @@ export default function ChatInterface ({ onNewSession }) {
     {
       role: 'assistant',
       content:
-        "Hi! I'm the Headstarter support assistant. How can I help you today?"
+        'Hi! I know parenting is difficult but rewarding job. I am here to help!'
     }
   ])
   const [message, setMessage] = useState('')
@@ -135,8 +246,9 @@ export default function ChatInterface ({ onNewSession }) {
             "I'm sorry, but I encountered an error. Please try again later."
         }
       ])
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }
 
   const handleKeyPress = event => {
@@ -192,18 +304,21 @@ export default function ChatInterface ({ onNewSession }) {
           {messages.map((message, index) => (
             <Box
               key={index}
-              display='flex'
-              justifyContent={
-                message.role === 'assistant' ? 'flex-start' : 'flex-end'
-              }
+              display="flex"
+              justifyContent={message.role === 'assistant' ? 'flex-start' : 'flex-end'}
             >
               <Box
                 bgcolor={message.role === 'assistant' ? 'black' : 'white'}
                 color={message.role === 'assistant' ? 'white' : 'black'}
                 borderRadius={5}
                 p={2}
+                sx={{ maxWidth: '70%' }}
               >
-                {message.content}
+                {message.role === 'assistant' ? (
+                  <ReactMarkdown components={MarkdownComponents}>{message.content}</ReactMarkdown>
+                ) : (
+                  <Typography>{message.content}</Typography>
+                )}
               </Box>
             </Box>
           ))}
@@ -234,8 +349,7 @@ export default function ChatInterface ({ onNewSession }) {
   )
 }
 
-
-//components/Sidebar.js
+//app/components/Sidebar.js
 import {
   Box,
   Toolbar,
@@ -244,9 +358,10 @@ import {
   ListItem,
   ListItemText,
   ListItemButton,
-  ListItemIcon
+  ListItemIcon,
+  Link,
+  Button
 } from '@mui/material'
-import SendIcon from '@mui/icons-material/Send'
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 
 import { useState, useEffect } from 'react'
@@ -271,7 +386,21 @@ export default function Sidebar () {
         flexShrink: '1',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center'
+        alignItems: 'center',
+        overflowY: 'scroll',
+        '&::-webkit-scrollbar': {
+          width: '0.4em'
+        },
+        '&::-webkit-scrollbar-track': {
+          boxShadow: 'inset 0 0 6px rgba(0,0,0,0.00)',
+          webkitBoxShadow: 'inset 0 0 6px rgba(0,0,0,0.00)'
+        },
+        '&::-webkit-scrollbar-thumb': {
+          backgroundColor: 'rgba(0,0,0,.1)',
+          outline: '1px solid slategrey'
+        },
+        scrollbarWidth: 'thin',
+        scrollbarColor: 'rgba(0,0,0,.1) transparent'
       }}
     >
       <Toolbar>
@@ -283,6 +412,13 @@ export default function Sidebar () {
           Customer Support
         </Typography>
       </Toolbar>
+      <Box sx={{ position: 'fixed', top: 20, right: 20 }}>
+        <Link href='/upload'>
+          <Button variant='contained' color='primary'>
+            Manage Documents
+          </Button>
+        </Link>
+      </Box>
       <List
         sx={{
           width: '100%',
@@ -301,7 +437,8 @@ export default function Sidebar () {
               '&:hover': { backgroundColor: 'white' },
               bgcolor: 'grey',
               borderRadius: '10px',
-              py: '4px'
+              py: '4px',
+              fontSize: '8px'
             }}
           >
             <ListItemIcon>
@@ -316,67 +453,9 @@ export default function Sidebar () {
 }
 
 
-
-//lib/firebase.js
-import { initializeApp } from 'firebase/app'
-import { getFirestore } from 'firebase/firestore'
-import { getAnalytics } from 'firebase/analytics'
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {}
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig)
-// const analytics = getAnalytics(app)
-
-// Export db
-export const db = getFirestore(app)
-
-
-//page.js
-'use client'
-
-import { Box } from '@mui/material'
-import Sidebar from './/components/Sidebar'
-import ChatInterface from './/components/ChatInterface'
-import { useState } from 'react'
-
-export default function Home () {
-  const [selectedSession, setSelectedSession] = useState(null)
-
-  const handleSessionSelect = sessionId => {
-    setSelectedSession(sessionId)
-    // You might want to load the messages for this session here
-  }
-
-  const handleNewSession = (sessionId, firstMessage) => {
-    // You might want to update the sidebar with the new session here
-  }
-  return (
-    <Box
-      component='section'
-      display='flex'
-      sx={{ flexDirection: 'row', height: '100vh' }}
-    >
-      <Sidebar onSessionSelect={handleSessionSelect} />
-      <ChatInterface onNewSession={handleNewSession} />
-    </Box>
-  )
-}
-
-
-
-
-
-
-
-
-
+//app/lib/firebaseOperations.js
 // lib/firebaseOperations.js
-import { db } from './firebase'
+import { db } from '../../firebase'
 import { collection, addDoc, getDocs, updateDoc, doc } from 'firebase/firestore'
 
 export const createSession = async firstMessage => {
@@ -413,106 +492,296 @@ export const getSessions = async () => {
   }
 }
 
+//app/upload/page.js
+// app/upload/page.js
+'use client'
 
-// Import the functions you need from the SDKs you need
-import { initializeApp } from 'firebase/app'
-import { getFirestore } from 'firebase/firestore'
-import { getAnalytics } from 'firebase/analytics'
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { useState, useEffect } from 'react'
+import {
+  Box,
+  Typography,
+  Button,
+  TextField,
+  List,
+  ListItem,
+  ListItemText
+} from '@mui/material'
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+export default function DocumentUpload () {
+  const [text, setText] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState('')
+  const [documents, setDocuments] = useState([])
+
+  useEffect(() => {
+    // Fetch the list of documents when the component mounts
+    fetchDocuments()
+  }, [])
+
+  const fetchDocuments = async () => {
+    try {
+      const response = await fetch('/api/rag/list-documents')
+      if (response.ok) {
+        const data = await response.json()
+        setDocuments(data.documents)
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error)
+    }
+  }
+
+  const handleSubmit = async e => {
+    e.preventDefault()
+    setIsLoading(true)
+    setMessage('')
+
+    try {
+      const response = await fetch('/api/rag/add-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      })
+
+      if (response.ok) {
+        setMessage('Document added successfully!')
+        setText('')
+        fetchDocuments() // Refresh the list of documents
+      } else {
+        setMessage('Failed to add document.')
+      }
+    } catch (error) {
+      setMessage('An error occurred.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <Box sx={{ m: 4 }}>
+      <Typography variant='h4' gutterBottom>
+        Document Upload
+      </Typography>
+      <Box component='form' onSubmit={handleSubmit} sx={{ mb: 4 }}>
+        <TextField
+          multiline
+          rows={4}
+          fullWidth
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder='Enter document text'
+          sx={{ mb: 2 }}
+        />
+        <Button type='submit' variant='contained' disabled={isLoading}>
+          {isLoading ? 'Adding...' : 'Add Document'}
+        </Button>
+      </Box>
+      {message && <Typography sx={{ mb: 2 }}>{message}</Typography>}
+
+      <Typography variant='h5' gutterBottom>
+        Uploaded Documents
+      </Typography>
+      <List>
+        {documents.map((doc, index) => (
+          <ListItem key={index}>
+            <ListItemText
+              primary={doc.title || `Document ${index + 1}`}
+              secondary={doc.text.substring(0, 100) + '...'}
+            />
+          </ListItem>
+        ))}
+      </List>
+    </Box>
+  )
 }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig)
-// const analytics = getAnalytics(app)
 
-// Export db
-export const db = getFirestore(app)
-
-
-// api/chat/route.js
-
-import { NextResponse } from 'next/server'
+//app/utils/openai.js
 import OpenAI from 'openai'
 
-// Define constants for easy configuration
-const SYSTEM_PROMPT = 'You are an expert parent!'
-const MODEL_NAME = 'gpt-4' // Using GPT-4 model
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+})
 
-export async function GET () {
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
+export async function createEmbedding (text) {
+  const response = await openai.embeddings.create({
+    model: 'text-embedding-ada-002',
+    input: text
   })
-  try {
-    console.log('OpenAI API Key:', process.env.OPENAI_API_KEY)
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [{ role: 'user', content: 'Hello, World!' }]
-    })
-    return NextResponse.json(response)
-  } catch (error) {
-    console.error('OpenAI Error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+  return response.data[0].embedding
 }
 
-export async function POST (req) {
-  // Initialize the OpenAI client
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
+// utils/openai.js
+
+export function enhancePromptWithContext (originalPrompt, context) {
+  return `
+  The following information may be relevant to the user's query. Use it if appropriate, but do not force its use if it's not directly relevant:
+  
+  ${context.map(doc => `- ${doc}`).join('\n')}
+  
+  User's question: ${originalPrompt}
+  
+  Please provide a well-structured, relevant answer. If the provided information is not directly relevant, rely on your general knowledge.
+  `
+}
+
+import OpenAI from 'openai'
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+})
+
+export async function createEmbedding (text) {
+  const response = await openai.embeddings.create({
+    model: 'text-embedding-ada-002',
+    input: text
   })
+  return response.data[0].embedding
+}
 
-  // Parse the incoming request body
-  const userMessages = await req.json()
+// utils/openai.js
 
-  // Create a ReadableStream to handle the streaming response
-  const stream = new ReadableStream({
-    async start (controller) {
-      // Initialize a TextEncoder to convert strings to Uint8Array
-      const encoder = new TextEncoder()
+export function enhancePromptWithContext (originalPrompt, context) {
+  if (!context.length) return `User's question: ${originalPrompt}`
 
-      try {
-        // Create a chat completion request to the OpenAI API
-        const completion = await openai.chat.completions.create({
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            ...userMessages
-          ],
-          model: MODEL_NAME,
-          stream: true // Enable streaming responses
-        })
+  const formattedContext = context
+    .map((doc, index) => `Context ${index + 1}: ${doc}`)
+    .join('\n\n')
+  return `
+  **Context Information:**
+  ${formattedContext}
 
-        // Iterate over the streamed chunks of the response
-        for await (const chunk of completion) {
-          const content = chunk.choices[0]?.delta?.content
-          if (content) {
-            // Encode and enqueue the content to the stream
-            const encodedContent = encoder.encode(content)
-            controller.enqueue(encodedContent)
-          }
-        }
-      } catch (error) {
-        // Log and handle any errors that occur during streaming
-        console.error('Error in OpenAI stream:', error)
-        controller.error(error)
-      } finally {
-        // Close the stream when done
-        controller.close()
-      }
+  **User's Question:**
+  ${originalPrompt}
+
+  **Guidance for Response:**
+  - Please provide a concise and structured answer.
+  - Use bullet points or numbered lists if necessary to clarify distinct points.
+  - Avoid technical jargon unless explicitly relevant.
+    `
+}
+
+export function createSystemPrompt () {
+  return `
+  You are an AI assistant designed to provide helpful and accurate information. When responding:
+  
+  1. Always strive for accuracy and relevance.
+  2. Use Markdown formatting for improved readability:
+     - Use **bold** for emphasis
+     - Use *italics* for subtle emphasis
+     - Use \`code blocks\` for code or technical terms
+     - Use bullet points or numbered lists for multiple items
+     - Use > for quotations
+     - Use --- for horizontal rules to separate sections
+  3. Structure your response with clear paragraphs:
+     - Use double line breaks between paragraphs
+     - Ensure there's a blank line before and after lists
+     - Keep paragraphs focused on a single idea
+  4. For lists:
+     - Use a blank line before starting a list
+     - Use a single line break between list items
+     - Use a blank line after the last list item
+  5. If using provided context, subtly indicate this (e.g., "Based on the information provided...").
+  6. If the provided context isn't relevant, rely on your general knowledge, don't mention anything from context.
+  7. Avoid mentioning personal details or names unless directly relevant to the query.
+  8. Maintain a consistent persona throughout the conversation.
+  9. If you're unsure or don't have information on a topic, say so clearly.
+  `
+}
+
+
+//app/utils/pinecone.js
+import { Pinecone } from '@pinecone-database/pinecone'
+
+let pinecone
+
+export async function initPinecone () {
+  if (!pinecone) {
+    pinecone = new Pinecone({
+      apiKey: process.env.PINECONE_API_KEY
+    })
+  }
+  return pinecone
+}
+
+export async function addDocument (text, metadata = {}) {
+  const pinecone = await initPinecone()
+  const index = pinecone.index(process.env.PINECONE_INDEX_NAME)
+
+  // Assume createEmbedding is implemented in openai.js
+  const { createEmbedding } = await import('./openai')
+  const embedding = await createEmbedding(text)
+
+  await index.upsert([
+    {
+      id: `doc_${Date.now()}`,
+      values: embedding,
+      metadata: { ...metadata, text }
     }
+  ])
+}
+
+export async function queryPinecone (query, topK = 3) {
+  const pinecone = await initPinecone()
+  const index = pinecone.index(process.env.PINECONE_INDEX_NAME)
+
+  const { createEmbedding } = await import('./openai')
+  const queryEmbedding = await createEmbedding(query)
+
+  const results = await index.query({
+    vector: queryEmbedding,
+    topK,
+    includeMetadata: true
   })
 
-  // Return the stream as the response
-  return new NextResponse(stream)
+  return results.matches.map(match => match.metadata.text)
+}
+
+export async function listDocuments () {
+  const pinecone = await initPinecone()
+  const index = pinecone.Index(process.env.PINECONE_INDEX_NAME)
+
+  // This is a simple implementation and might need pagination for large datasets
+  const queryResponse = await index.query({
+    vector: Array(1536).fill(0), // Assuming 1536 is your vector dimension
+    topK: 10000, // Adjust based on your needs
+    includeMetadata: true
+  })
+
+  return queryResponse.matches.map(match => ({
+    id: match.id,
+    text: match.metadata.text
+    // Add any other metadata fields you want to include
+  }))
+}
+
+
+//app/page.js
+'use client'
+
+import { Box } from '@mui/material'
+import Sidebar from './/components/Sidebar'
+import ChatInterface from './/components/ChatInterface'
+import { useState } from 'react'
+
+export default function Home () {
+  const [selectedSession, setSelectedSession] = useState(null)
+
+  const handleSessionSelect = sessionId => {
+    setSelectedSession(sessionId)
+    // You might want to load the messages for this session here
+  }
+
+  const handleNewSession = (sessionId, firstMessage) => {
+    // You might want to update the sidebar with the new session here
+  }
+  return (
+    <Box
+      component='section'
+      display='flex'
+      sx={{ flexDirection: 'row', height: '100vh' }}
+    >
+      <Sidebar onSessionSelect={handleSessionSelect} />
+      <ChatInterface onNewSession={handleNewSession} />
+    </Box>
+  )
 }
