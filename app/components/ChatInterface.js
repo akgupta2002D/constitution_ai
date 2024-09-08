@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Box, Button, Stack, TextField, Typography } from '@mui/material'
+import { Box, Button, Stack, TextField, Typography, Link } from '@mui/material'
 import ReactMarkdown from 'react-markdown'
 import { createSession, updateSession } from '../lib/firebaseOperations'
 
@@ -255,6 +255,19 @@ export default function ChatInterface ({ session, onNewSession }) {
           >
             {isLoading ? 'Sending...' : 'Send'}
           </Button>
+          <Link href='https://github.com/akgupta2002D/customer_support_ai'>
+            <Button
+              variant='contained'
+              sx={{
+                bgcolor: 'grey',
+                color: 'white',
+                borderRadius: '10px',
+                minWidth: '100px'
+              }}
+            >
+              GitHub Link
+            </Button>
+          </Link>
         </Stack>
       </Stack>
 
