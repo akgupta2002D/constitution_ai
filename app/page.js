@@ -3,7 +3,8 @@
 import { Box } from '@mui/material'
 import Sidebar from './/components/Sidebar'
 import ChatInterface from './/components/ChatInterface'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Head from 'next/head'
 
 export default function Home () {
   const [selectedSession, setSelectedSession] = useState(null)
@@ -18,6 +19,9 @@ export default function Home () {
       messages: [{ role: 'user', content: firstMessage }]
     })
   }
+  useEffect(() => {
+    document.title = 'Constitution AI' // Force update title on the client side
+  }, [])
 
   return (
     <Box
