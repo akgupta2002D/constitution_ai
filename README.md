@@ -1,3 +1,7 @@
+## Todo
+Update the readme to properly explain the project
+Remove default next.js readme.md - Add a link to access it 
+
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
