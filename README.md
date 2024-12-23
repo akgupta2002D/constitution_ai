@@ -2,6 +2,7 @@
 
 **Nepal Constitution AI** is a Retrieval-Augmented Generation (RAG)-based chatbot designed to empower Nepalese citizens with legal knowledge. This project combines cutting-edge AI technology with a mission to address misinformation and improve access to constitutional rights in Nepal. By limiting the AI's knowledge space to official constitutional documents, it ensures accurate and reliable information delivery.
 
+![App Display](AppDisplay.png)
 ---
 
 ## 🌟 Background and Motivation
@@ -142,7 +143,3 @@ Feel free to reach out via [GitHub](https://github.com/akgupta2002D) for questio
 - **OpenRouter & Pinecone**: For providing robust tools to build this project.
 
 ---
-
-## 📜 License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
