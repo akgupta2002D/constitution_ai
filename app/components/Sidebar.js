@@ -82,7 +82,7 @@ export default function Sidebar({ onSessionSelect }) {
             cursor: 'pointer',
             width: '100%'
           }}
-          onClick={() => window.location.reload()} // Reload to start a new chat
+          onClick={() => window.location.reload()} // Using window reload to create a new chat
         >
           <Typography
             variant="h6"
