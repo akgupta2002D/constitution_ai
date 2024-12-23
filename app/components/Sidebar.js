@@ -3,10 +3,9 @@ import {
   Toolbar,
   Typography,
   List,
-  ListItem,
-  ListItemText,
   ListItemButton,
   ListItemIcon,
+  ListItemText,
   Link,
   Button,
   Avatar
@@ -14,60 +13,66 @@ import {
 
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 import AddIcon from '@mui/icons-material/Add'
-
 import { useState, useEffect } from 'react'
 import { getSessions } from '../lib/firebaseOperations'
 
-export default function Sidebar ({ onSessionSelect }) {
+/**
+ * Sidebar Component
+ *
+ * Displays a sidebar for navigating chat sessions, starting new chats, and managing documents.
+ * Features:
+ * - A list of previous chat sessions fetched from the backend.
+ * - A button to create a new chat.
+ * - A link to manage uploaded documents.
+ *
+ * @param {Function} onSessionSelect - Callback for selecting a chat session.
+ */
+export default function Sidebar({ onSessionSelect }) {
+  // State to store the fetched chat sessions
   const [sessions, setSessions] = useState([])
 
+  // Fetch chat sessions on component mount
   useEffect(() => {
     const fetchSessions = async () => {
-      const fetchedSessions = await getSessions()
-      setSessions(fetchedSessions)
+      const fetchedSessions = await getSessions() // Fetch sessions from the backend
+      setSessions(fetchedSessions) // Update state with fetched sessions
     }
     fetchSessions()
   }, [])
+
   return (
     <Box
-      position='static'
+      position="static"
       sx={{
         minWidth: '300px',
         bgcolor: 'black',
         flexBasis: '20%',
-        flexShrink: '1',
+        flexShrink: 1,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         overflowY: 'scroll',
-        '&::-webkit-scrollbar': {
-          width: '0.4em'
-        },
-        '&::-webkit-scrollbar-track': {
-          boxShadow: 'inset 0 0 6px rgba(0,0,0,0.00)',
-          webkitBoxShadow: 'inset 0 0 6px rgba(0,0,0,0.00)'
-        },
-        '&::-webkit-scrollbar-thumb': {
-          backgroundColor: 'rgba(0,0,0,.1)',
-          outline: '1px solid slategrey'
-        },
+        '&::-webkit-scrollbar': { width: '0.4em' },
+        '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0,0,0,.1)' },
         scrollbarWidth: 'thin',
         scrollbarColor: 'rgba(0,0,0,.1) transparent'
       }}
     >
+      {/* Logo Section */}
       <Box sx={{ width: '100%', textAlign: 'center', py: 2 }}>
         <Avatar
-          src='./logo.webp'
-          alt='Logo'
+          src="./logo.webp"
+          alt="Logo"
           sx={{
             width: 100,
             height: 100,
             mx: 'auto',
-            boxShadow: '0 0 15px rgba(255, 255, 255, 0.8)' // Adjust glow size and color as needed
+            boxShadow: '0 0 15px rgba(255, 255, 255, 0.8)' // Glowing effect for the logo
           }}
         />
       </Box>
 
+      {/* New Chat Button */}
       <Toolbar sx={{ width: '100%', textAlign: 'center' }}>
         <Box
           sx={{
@@ -77,11 +82,11 @@ export default function Sidebar ({ onSessionSelect }) {
             cursor: 'pointer',
             width: '100%'
           }}
-          onClick={() => window.location.reload()}
+          onClick={() => window.location.reload()} // Reload to start a new chat
         >
           <Typography
-            variant='h6'
-            component='div'
+            variant="h6"
+            component="div"
             sx={{ color: 'white', mr: 1 }}
           >
             New Chat
@@ -90,6 +95,7 @@ export default function Sidebar ({ onSessionSelect }) {
         </Box>
       </Toolbar>
 
+      {/* Sessions List */}
       <List
         sx={{
           width: '100%',
@@ -99,16 +105,14 @@ export default function Sidebar ({ onSessionSelect }) {
           flexDirection: 'column',
           gap: '6px',
           overflowY: 'auto',
-          '::-webkit-scrollbar': {
-            display: 'none'
-          },
+          '::-webkit-scrollbar': { display: 'none' },
           scrollbarWidth: 'none'
         }}
       >
         {sessions.map(session => (
           <ListItemButton
             key={session.id}
-            onClick={() => onSessionSelect(session)}
+            onClick={() => onSessionSelect(session)} // Handle session selection
             sx={{
               '&:hover': { backgroundColor: 'white', color: 'black' },
               bgcolor: 'transparent',
@@ -125,13 +129,15 @@ export default function Sidebar ({ onSessionSelect }) {
             <ListItemText
               primary={
                 session.name.length > 20
-                  ? `${session.name.slice(0, 20)}...`
+                  ? `${session.name.slice(0, 20)}...` // Truncate long session names
                   : session.name
               }
             />
           </ListItemButton>
         ))}
       </List>
+
+      {/* Manage Documents Button */}
       <Box
         sx={{
           display: 'flex',
@@ -140,10 +146,10 @@ export default function Sidebar ({ onSessionSelect }) {
           paddingTop: '16px'
         }}
       >
-        <Link href='/upload'>
+        <Link href="/upload">
           <Button
-            variant='contained'
-            color='primary'
+            variant="contained"
+            color="primary"
             sx={{ bgcolor: '#003893' }}
           >
             Manage Documents

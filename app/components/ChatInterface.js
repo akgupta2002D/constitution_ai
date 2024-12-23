@@ -3,13 +3,21 @@ import { Box, Button, Stack, TextField, Typography, Link } from '@mui/material'
 import ReactMarkdown from 'react-markdown'
 import { createSession, updateSession } from '../lib/firebaseOperations'
 
-export default function ChatInterface ({ session, onNewSession }) {
+/**
+ * ChatInterface Component
+ *
+ * Provides an interactive chat interface where users can communicate with an assistant.
+ * Supports session management, real-time messaging, and a dynamic typing indicator.
+ *
+ */
+export default function ChatInterface({ session, onNewSession }) {
+  // Custom Markdown components for rendering assistant messages.
   const MarkdownComponents = {
-    p: props => <Typography {...props} paragraph />,
-    ul: props => (
+    p: (props) => <Typography {...props} paragraph />,
+    ul: (props) => (
       <ul style={{ paddingLeft: '20px', marginBottom: '16px' }} {...props} />
     ),
-    li: props => <li style={{ marginBottom: '8px' }} {...props} />
+    li: (props) => <li style={{ marginBottom: '8px' }} {...props} />
   }
 
   const [messages, setMessages] = useState([
@@ -18,12 +26,13 @@ export default function ChatInterface ({ session, onNewSession }) {
       content:
         'Namaste! Let me answer your questions about the constitution of Nepal'
     }
-  ])
-  const [message, setMessage] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [sessionId, setSessionId] = useState(null)
-  const [isTyping, setIsTyping] = useState(false)
+  ]) // Stores chat messages.
+  const [message, setMessage] = useState('') // Stores the user's current input.
+  const [isLoading, setIsLoading] = useState(false) // Tracks message sending status.
+  const [sessionId, setSessionId] = useState(null) // Tracks the current session ID.
+  const [isTyping, setIsTyping] = useState(false) // Indicates if the assistant is typing.
 
+  // Initializes or updates the chat session when the session prop changes.
   useEffect(() => {
     if (session) {
       setMessages(
@@ -48,6 +57,7 @@ export default function ChatInterface ({ session, onNewSession }) {
     }
   }, [session])
 
+  // Handles sending messages and updates the chat state.
   const sendMessage = async () => {
     if (!message.trim()) return
     setIsLoading(true)
@@ -71,9 +81,7 @@ export default function ChatInterface ({ session, onNewSession }) {
     try {
       const response = await fetch('/api/llamaChat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedMessages)
       })
 
@@ -85,15 +93,15 @@ export default function ChatInterface ({ session, onNewSession }) {
       const decoder = new TextDecoder()
 
       let assistantMessage = { role: 'assistant', content: '' }
-      setMessages(prevMessages => [...prevMessages, assistantMessage])
-      setIsTyping(false) // Hide typing indicator as soon as we start receiving the response
+      setMessages((prevMessages) => [...prevMessages, assistantMessage])
+      setIsTyping(false)
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
         const text = decoder.decode(value, { stream: true })
         assistantMessage.content += text
-        setMessages(prevMessages => {
+        setMessages((prevMessages) => {
           const newMessages = [
             ...prevMessages.slice(0, -1),
             { ...assistantMessage }
@@ -104,46 +112,40 @@ export default function ChatInterface ({ session, onNewSession }) {
       }
     } catch (error) {
       console.error('Error:', error)
-      const errorMessage = {
-        role: 'assistant',
-        content:
-          "I'm sorry, but I encountered an error. Please try again later."
-      }
-      setMessages(prevMessages => {
-        const newMessages = [...prevMessages, errorMessage]
-        updateSession(currentSessionId, newMessages)
-        return newMessages
-      })
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { role: 'assistant', content: "I'm sorry, but I encountered an error. Please try again later." }
+      ])
     } finally {
       setIsLoading(false)
-      setIsTyping(false) // Ensure typing indicator is hidden in case of error
+      setIsTyping(false)
     }
   }
 
-  const handleKeyPress = event => {
+  // Handles pressing the 'Enter' key to send a message.
+  const handleKeyPress = (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
       sendMessage()
     }
   }
 
+  // Ensures the chat scrolls to the bottom when messages update.
   const messagesEndRef = useRef(null)
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
-
   useEffect(() => {
     scrollToBottom()
   }, [messages])
 
   return (
     <Box
-      height='100vh'
-      display='flex'
-      flexDirection='column'
-      justifyContent='center'
-      alignItems='center'
+      height="100vh"
+      display="flex"
+      flexDirection="column"
+      justifyContent="center"
+      alignItems="center"
       px={{ xs: 2, sm: 3, md: 16 }}
       sx={{
         position: 'relative',
@@ -165,26 +167,17 @@ export default function ChatInterface ({ session, onNewSession }) {
         }
       }}
     >
-      <Stack direction={'column'} width='100%' height='700px' p={3} spacing={3}>
+      <Stack direction="column" width="100%" height="700px" p={3} spacing={3}>
         <Stack
-          direction={'column'}
+          direction="column"
           spacing={2}
           flexGrow={1}
           py={6}
-          overflow='auto'
-          maxHeight='100%'
+          overflow="auto"
+          maxHeight="100%"
           sx={{
-            '&::-webkit-scrollbar': {
-              width: '0.4em'
-            },
-            '&::-webkit-scrollbar-track': {
-              boxShadow: 'inset 0 0 6px rgba(0,0,0,0.00)',
-              webkitBoxShadow: 'inset 0 0 6px rgba(0,0,0,0.00)'
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: 'rgba(0,0,0,.1)',
-              outline: '1px solid slategrey'
-            },
+            '&::-webkit-scrollbar': { width: '0.4em' },
+            '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0,0,0,.1)' },
             scrollbarWidth: 'thin',
             scrollbarColor: 'rgba(0,0,0,.1) transparent'
           }}
@@ -192,7 +185,7 @@ export default function ChatInterface ({ session, onNewSession }) {
           {messages.map((message, index) => (
             <Box
               key={index}
-              display='flex'
+              display="flex"
               justifyContent={
                 message.role === 'assistant' ? 'flex-start' : 'flex-end'
               }
@@ -216,10 +209,10 @@ export default function ChatInterface ({ session, onNewSession }) {
             </Box>
           ))}
           {isTyping && (
-            <Box display='flex' justifyContent='flex-start' mt={2}>
+            <Box display="flex" justifyContent="flex-start" mt={2}>
               <Box
-                bgcolor='black'
-                color='white'
+                bgcolor="black"
+                color="white"
                 borderRadius={5}
                 px={6}
                 py={2}
@@ -231,19 +224,20 @@ export default function ChatInterface ({ session, onNewSession }) {
           )}
           <div ref={messagesEndRef} />
         </Stack>
-        <Stack direction={'row'} spacing={2}>
+
+        <Stack direction="row" spacing={2}>
           <TextField
             sx={{ bgcolor: 'white', borderRadius: '10px' }}
-            label='Message'
+            label="Message"
             fullWidth
             value={message}
-            variant='filled'
-            onChange={e => setMessage(e.target.value)}
+            variant="filled"
+            onChange={(e) => setMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             disabled={isLoading}
           />
           <Button
-            variant='contained'
+            variant="contained"
             onClick={sendMessage}
             disabled={isLoading}
             sx={{
@@ -255,9 +249,9 @@ export default function ChatInterface ({ session, onNewSession }) {
           >
             {isLoading ? 'Sending...' : 'Send'}
           </Button>
-          <Link href='https://github.com/akgupta2002D/customer_support_ai'>
+          <Link href="https://github.com/akgupta2002D/customer_support_ai">
             <Button
-              variant='contained'
+              variant="contained"
               sx={{
                 bgcolor: 'grey',
                 color: 'white',
@@ -270,22 +264,6 @@ export default function ChatInterface ({ session, onNewSession }) {
           </Link>
         </Stack>
       </Stack>
-
-      {/* <Box
-        sx={{
-          position: 'fixed',
-          bottom: 16,
-          right: 16,
-          width: 400,
-          height: 500,
-          background: 'transparent',
-          borderRadius: '8px',
-          overflow: 'hidden',
-          zIndex: 10
-        }}
-      >
-        <ThreeScene />
-      </Box> */}
     </Box>
   )
 }
